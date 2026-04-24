@@ -1,0 +1,1 @@
+Look into adding a setting to move the tab bar to the bottom

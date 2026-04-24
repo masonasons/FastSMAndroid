@@ -1,0 +1,20 @@
+0.2.1
+Fix some differences between desktop and mobile with templates.
+Add remove emojis from display names option.
+Add configurable username truncation for posts with many people being replied to.
+Add a new setting to remember timeline position for other timelines besides home.
+
+0.2.0
+Add updater.
+Add notifications support. Due to Android limitations, notifications will be pull only until NTFY support is added, which means they are not realtime. Bluesky does not have any kind of realtime notifications API, so that will always be pull only.
+Load more posts at a time for bluesky
+Add an option to open the soundpacks directory.
+
+0.1.1
+Add an account settings page, where you can set a per account soundpack.
+Add quoted/quoting support.
+Add a new setting to automatically focus the text box when a new post dialog comes up.
+Add a new setting which dictates if the submit gesture in certain keyboards will automatically send the post.
+Fix interactions in remote timelines.
+Add post templates, for configuring exactly what is spoken when reading posts in your timelines.
+Add tap and hold menus as an alternative for accessibility actions, for devices that do not support them.
