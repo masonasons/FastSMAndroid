@@ -29,6 +29,7 @@ Thumbs.db
 # Logs / temp
 *.log
 *.tmp
+*.tmp.*
 
 # APK outputs (release artifacts distributed separately)
 *.apk
