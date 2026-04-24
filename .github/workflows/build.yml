@@ -23,6 +23,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Get version
+        id: version
+        run: |
+          version=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Decode keystore
         env:
           KEYSTORE_B64: ${{ secrets.FASTSM_RELEASE_STORE_FILE_B64 }}
@@ -44,18 +50,29 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish 'latest' release
+      - name: Delete existing latest release
+        run: gh release delete latest --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Rolling release: delete the previous 'latest' tag + release so the
-          # new one points at the current commit, then recreate with FastSM.apk
-          # attached. The download URL
-          # https://github.com/${{ github.repository }}/releases/download/latest/FastSM.apk
-          # stays stable across runs.
-          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create latest \
-            --title "latest" \
-            --notes "Automated build from ${GITHUB_SHA::7}" \
-            --target "$GITHUB_SHA" \
-            app/build/outputs/apk/release/FastSM.apk
+
+      - name: Create latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            **Version:** ${{ steps.version.outputs.version }}
+            **Built:** ${{ github.event.head_commit.timestamp }}
+            **Commit:** ${{ github.event.head_commit.message }}
+
+            This release is automatically updated on every commit to main.
+
+            ## Downloads
+            - **Android APK:** FastSM.apk
+          files: app/build/outputs/apk/release/FastSM.apk
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
