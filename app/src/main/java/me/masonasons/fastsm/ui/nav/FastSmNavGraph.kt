@@ -42,6 +42,9 @@ import me.masonasons.fastsm.ui.settings.SettingsScreen
 import me.masonasons.fastsm.ui.settings.SettingsViewModel
 import me.masonasons.fastsm.ui.thread.ThreadScreen
 import me.masonasons.fastsm.ui.thread.ThreadViewModel
+import me.masonasons.fastsm.ui.userlist.UserListKind
+import me.masonasons.fastsm.ui.userlist.UserListScreen
+import me.masonasons.fastsm.ui.userlist.UserListViewModel
 import me.masonasons.fastsm.util.CustomTabs
 import me.masonasons.fastsm.util.MediaLauncher
 
@@ -67,6 +70,11 @@ private object Routes {
         val descPart = description?.let { "&desc=${enc(it)}" } ?: ""
         return "media?url=${enc(url)}&type=${enc(type)}$descPart"
     }
+    const val USER_LIST = "userList?accountId={accountId}&userId={userId}&kind={kind}"
+    fun userList(accountId: Long, userId: String, kind: UserListKind): String =
+        "userList?accountId=$accountId" +
+            "&userId=${java.net.URLEncoder.encode(userId, "UTF-8")}" +
+            "&kind=${kind.name}"
 }
 
 @Composable
@@ -168,6 +176,10 @@ fun FastSmNavGraph(container: AppContainer) {
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenAccountSettings = { id -> navController.navigate(Routes.accountSettings(id)) },
+                onOpenUserList = { userId, kind ->
+                    val accountId = container.appPrefs.activeAccountId.value ?: return@HomeScreen
+                    navController.navigate(Routes.userList(accountId, userId, kind))
+                },
             )
         }
         composable(Routes.COMPOSE) {
@@ -276,6 +288,40 @@ fun FastSmNavGraph(container: AppContainer) {
                 onOpenLink = onOpenLink,
                 onCompose = { navController.navigate(Routes.COMPOSE) },
                 onClose = { navController.popBackStack() },
+                onOpenFollowers = { id ->
+                    val accountId = container.appPrefs.activeAccountId.value ?: return@ProfileScreen
+                    navController.navigate(Routes.userList(accountId, id, UserListKind.Followers))
+                },
+                onOpenFollowing = { id ->
+                    val accountId = container.appPrefs.activeAccountId.value ?: return@ProfileScreen
+                    navController.navigate(Routes.userList(accountId, id, UserListKind.Following))
+                },
+            )
+        }
+        composable(
+            route = Routes.USER_LIST,
+            arguments = listOf(
+                navArgument("accountId") { type = NavType.LongType },
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("kind") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getLong("accountId") ?: return@composable
+            val userId = backStackEntry.arguments?.getString("userId").orEmpty()
+            val kindArg = backStackEntry.arguments?.getString("kind").orEmpty()
+            val kind = runCatching { UserListKind.valueOf(kindArg) }
+                .getOrDefault(UserListKind.Followers)
+            val ulFactory = remember(container, accountId, userId, kind) {
+                UserListViewModelFactory(container, accountId, userId, kind)
+            }
+            val vm: UserListViewModel = viewModel(
+                key = "userList-$accountId-$kind-$userId",
+                factory = ulFactory,
+            )
+            UserListScreen(
+                viewModel = vm,
+                onOpenProfile = { id -> navController.navigate(Routes.profile(id)) },
+                onClose = { navController.popBackStack() },
             )
         }
     }
@@ -295,6 +341,26 @@ private class ProfileViewModelFactory(
             timelineRepository = container.timelineRepository,
             platformFactory = container.platformFactory,
             composeDraftStore = container.composeDraftStore,
+            feedback = container.feedbackManager,
+        ) as T
+    }
+}
+
+private class UserListViewModelFactory(
+    private val container: AppContainer,
+    private val accountId: Long,
+    private val userId: String,
+    private val kind: UserListKind,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        require(modelClass == UserListViewModel::class.java) { "Unexpected $modelClass" }
+        return UserListViewModel(
+            accountId = accountId,
+            targetUserId = userId,
+            kind = kind,
+            accountRepository = container.accountRepository,
+            platformFactory = container.platformFactory,
             feedback = container.feedbackManager,
         ) as T
     }

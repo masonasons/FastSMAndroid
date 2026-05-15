@@ -50,6 +50,7 @@ internal fun MastodonRelationshipDto.toUniversal(): Relationship = Relationship(
     followedBy = followed_by,
     muting = muting,
     blocking = blocking,
+    showReblogs = showing_reblogs,
 )
 
 internal fun MastodonNotificationDto.toUniversal(): UniversalNotification = UniversalNotification(

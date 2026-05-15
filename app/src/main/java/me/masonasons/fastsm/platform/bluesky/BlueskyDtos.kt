@@ -162,6 +162,23 @@ data class ResolveHandleResponse(
     val did: String,
 )
 
+// --- Graph (followers/following, mute) ---
+
+@Serializable
+data class BskyActorListResponseDto(
+    /** Bluesky returns `BskyProfileDetailDto`-shaped entries (no viewer field on getFollowers/getFollows). */
+    val followers: List<BskyProfileBasicDto> = emptyList(),
+    val follows: List<BskyProfileBasicDto> = emptyList(),
+    val subject: BskyProfileBasicDto? = null,
+    val cursor: String? = null,
+) {
+    /** Whichever array the endpoint populated. */
+    val actors: List<BskyProfileBasicDto> get() = followers.ifEmpty { follows }
+}
+
+@Serializable
+data class BskyActorRequest(val actor: String)
+
 // --- Search ---
 
 @Serializable

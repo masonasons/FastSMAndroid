@@ -17,6 +17,7 @@ import me.masonasons.fastsm.domain.model.UniversalNotification
 import me.masonasons.fastsm.domain.model.UniversalStatus
 import me.masonasons.fastsm.domain.model.UniversalUser
 import me.masonasons.fastsm.domain.model.UserListInfo
+import me.masonasons.fastsm.domain.model.UserListPage
 import me.masonasons.fastsm.platform.PlatformAccount
 
 class MastodonPlatform(
@@ -219,11 +220,41 @@ class MastodonPlatform(
     override suspend fun getRelationship(userId: String): Relationship? =
         api.getRelationship(userId)?.toUniversal()
 
+    override suspend fun getRelationships(userIds: List<String>): Map<String, Relationship> {
+        if (userIds.isEmpty()) return emptyMap()
+        return api.getRelationships(userIds).associate { it.id to it.toUniversal() }
+    }
+
     override suspend fun follow(userId: String): Relationship =
         api.followAccount(userId).toUniversal()
 
     override suspend fun unfollow(userId: String): Relationship =
         api.unfollowAccount(userId).toUniversal()
+
+    override suspend fun setShowReblogs(userId: String, show: Boolean): Relationship =
+        api.followAccount(userId, reblogs = show).toUniversal()
+
+    override suspend fun mute(userId: String): Relationship =
+        api.muteAccount(userId).toUniversal()
+
+    override suspend fun unmute(userId: String): Relationship =
+        api.unmuteAccount(userId).toUniversal()
+
+    override suspend fun block(userId: String): Relationship =
+        api.blockAccount(userId).toUniversal()
+
+    override suspend fun unblock(userId: String): Relationship =
+        api.unblockAccount(userId).toUniversal()
+
+    override suspend fun getFollowers(userId: String, limit: Int, cursor: String?): UserListPage {
+        val (accounts, next) = api.getFollowers(userId, limit, cursor)
+        return UserListPage(accounts.map { it.toUniversal() }, next)
+    }
+
+    override suspend fun getFollowing(userId: String, limit: Int, cursor: String?): UserListPage {
+        val (accounts, next) = api.getFollowing(userId, limit, cursor)
+        return UserListPage(accounts.map { it.toUniversal() }, next)
+    }
 
     override val supportsEdit: Boolean = true
     override val supportsMedia: Boolean = true

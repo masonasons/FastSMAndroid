@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import me.masonasons.fastsm.domain.model.TimelineSpec
 import me.masonasons.fastsm.domain.model.UniversalMedia
 import me.masonasons.fastsm.domain.model.UniversalStatus
+import me.masonasons.fastsm.ui.userlist.UserListKind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +81,7 @@ fun HomeScreen(
     onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAccountSettings: (Long) -> Unit,
+    onOpenUserList: (userId: String, kind: UserListKind) -> Unit,
 ) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val activeId by viewModel.activeAccountId.collectAsStateWithLifecycle()
@@ -148,6 +150,22 @@ fun HomeScreen(
                             DropdownMenuItem(
                                 text = { Text("Add timeline") },
                                 onClick = { menuExpanded = false; showAddDialog = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("My followers") },
+                                onClick = {
+                                    menuExpanded = false
+                                    myUserId?.let { onOpenUserList(it, UserListKind.Followers) }
+                                },
+                                enabled = myUserId != null,
+                            )
+                            DropdownMenuItem(
+                                text = { Text("My following") },
+                                onClick = {
+                                    menuExpanded = false
+                                    myUserId?.let { onOpenUserList(it, UserListKind.Following) }
+                                },
+                                enabled = myUserId != null,
                             )
                             DropdownMenuItem(
                                 text = { Text("Settings") },

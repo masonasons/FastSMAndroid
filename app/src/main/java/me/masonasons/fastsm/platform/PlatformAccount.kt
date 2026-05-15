@@ -14,6 +14,7 @@ import me.masonasons.fastsm.domain.model.StatusSource
 import me.masonasons.fastsm.domain.model.UniversalStatus
 import me.masonasons.fastsm.domain.model.UniversalUser
 import me.masonasons.fastsm.domain.model.UserListInfo
+import me.masonasons.fastsm.domain.model.UserListPage
 
 /**
  * Authenticated account on a specific platform. Mirrors the desktop
@@ -105,9 +106,34 @@ interface PlatformAccount {
 
     suspend fun getRelationship(userId: String): Relationship?
 
+    /**
+     * Batch relationship lookup. Default impl calls [getRelationship] per id —
+     * platforms with a native batch endpoint (Mastodon) should override.
+     */
+    suspend fun getRelationships(userIds: List<String>): Map<String, Relationship> =
+        userIds.mapNotNull { id -> getRelationship(id)?.let { id to it } }.toMap()
+
     suspend fun follow(userId: String): Relationship
 
     suspend fun unfollow(userId: String): Relationship
+
+    /**
+     * Toggle whether boosts/reposts from [userId] appear in the home timeline.
+     * Mastodon implements this by re-following with `reblogs=show`. Bluesky
+     * has no equivalent — implementations there return null.
+     */
+    suspend fun setShowReblogs(userId: String, show: Boolean): Relationship? = null
+
+    suspend fun mute(userId: String): Relationship
+    suspend fun unmute(userId: String): Relationship
+    suspend fun block(userId: String): Relationship
+    suspend fun unblock(userId: String): Relationship
+
+    /** Followers of [userId]. Caller passes prior page's [UserListPage.nextCursor] for paging. */
+    suspend fun getFollowers(userId: String, limit: Int = 40, cursor: String? = null): UserListPage
+
+    /** Accounts [userId] is following. Cursor-paginated. */
+    suspend fun getFollowing(userId: String, limit: Int = 40, cursor: String? = null): UserListPage
 
     suspend fun post(request: PostRequest): UniversalStatus
 

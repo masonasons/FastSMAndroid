@@ -23,6 +23,7 @@ import me.masonasons.fastsm.domain.model.UniversalNotification
 import me.masonasons.fastsm.domain.model.UniversalStatus
 import me.masonasons.fastsm.domain.model.UniversalUser
 import me.masonasons.fastsm.domain.model.UserListInfo
+import me.masonasons.fastsm.domain.model.UserListPage
 import me.masonasons.fastsm.platform.PlatformAccount
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -233,6 +234,48 @@ class BlueskyPlatform(
             api.deleteRecord(account.userId, "app.bsky.graph.follow", rkey)
         }
         getRelationship(userId) ?: Relationship(userId, false, false, false, false, false)
+    }
+
+    // Bluesky has no per-account repost toggle. UI should hide the affordance.
+    override suspend fun setShowReblogs(userId: String, show: Boolean): Relationship? = null
+
+    override suspend fun mute(userId: String): Relationship = authed {
+        api.muteActor(userId)
+        getRelationship(userId) ?: Relationship(userId, false, false, false, true, false)
+    }
+
+    override suspend fun unmute(userId: String): Relationship = authed {
+        api.unmuteActor(userId)
+        getRelationship(userId) ?: Relationship(userId, false, false, false, false, false)
+    }
+
+    override suspend fun block(userId: String): Relationship = authed {
+        val record = buildJsonObject {
+            put("\$type", "app.bsky.graph.block")
+            put("subject", userId)
+            put("createdAt", nowIso())
+        }
+        api.createRecord(account.userId, "app.bsky.graph.block", record)
+        getRelationship(userId) ?: Relationship(userId, false, false, false, false, true)
+    }
+
+    override suspend fun unblock(userId: String): Relationship = authed {
+        val blockUri = api.getProfile(userId).viewer?.blocking
+        if (blockUri != null) {
+            val rkey = blockUri.substringAfterLast('/')
+            api.deleteRecord(account.userId, "app.bsky.graph.block", rkey)
+        }
+        getRelationship(userId) ?: Relationship(userId, false, false, false, false, false)
+    }
+
+    override suspend fun getFollowers(userId: String, limit: Int, cursor: String?): UserListPage = authed {
+        val page = api.getFollowers(userId, limit, cursor)
+        UserListPage(page.followers.map { it.toUniversal() }, page.cursor)
+    }
+
+    override suspend fun getFollowing(userId: String, limit: Int, cursor: String?): UserListPage = authed {
+        val page = api.getFollows(userId, limit, cursor)
+        UserListPage(page.follows.map { it.toUniversal() }, page.cursor)
     }
 
     override suspend fun post(request: PostRequest): UniversalStatus = authed {

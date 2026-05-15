@@ -115,6 +115,7 @@ data class MastodonRelationshipDto(
     val followed_by: Boolean = false,
     val muting: Boolean = false,
     val blocking: Boolean = false,
+    val showing_reblogs: Boolean = true,
 )
 
 @Serializable

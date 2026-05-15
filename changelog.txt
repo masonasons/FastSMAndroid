@@ -1,3 +1,8 @@
+0.2.2
+View followers/following from the profile screen, or your own from the home overflow menu.
+Per-row actions on the user list: follow/unfollow, show/hide boosts (Mastodon), mute/unmute, block/unblock.
+Edit mode on the user list for batch follow/unfollow.
+
 0.2.1
 Fix some differences between desktop and mobile with templates.
 Add remove emojis from display names option.

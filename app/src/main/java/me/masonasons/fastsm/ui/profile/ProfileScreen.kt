@@ -60,6 +60,8 @@ fun ProfileScreen(
     onOpenLink: (String) -> Unit,
     onCompose: () -> Unit,
     onClose: () -> Unit,
+    onOpenFollowers: (userId: String) -> Unit,
+    onOpenFollowing: (userId: String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showListsDialog by remember { mutableStateOf(false) }
@@ -144,6 +146,8 @@ fun ProfileScreen(
                             onOpenRemoteUserTimeline = viewModel::openRemoteUserTimeline,
                             onToggleList = viewModel::toggleList,
                             onShowListsDialog = { showListsDialog = true },
+                            onOpenFollowers = { onOpenFollowers(state.user!!.id) },
+                            onOpenFollowing = { onOpenFollowing(state.user!!.id) },
                         )
                         HorizontalDivider()
                     }
@@ -204,6 +208,8 @@ private fun ProfileHeader(
     onOpenRemoteUserTimeline: () -> Unit,
     onToggleList: (String) -> Unit,
     onShowListsDialog: () -> Unit,
+    onOpenFollowers: () -> Unit,
+    onOpenFollowing: () -> Unit,
 ) {
     val bio = HtmlStrip.toPlainText(user.note)
     val spoken = buildString {
@@ -234,6 +240,8 @@ private fun ProfileHeader(
             add(CustomAccessibilityAction(label) { onToggleFollow(); true })
         }
         add(CustomAccessibilityAction("Open user timeline") { onOpenAsTimeline(); true })
+        add(CustomAccessibilityAction("View followers") { onOpenFollowers(); true })
+        add(CustomAccessibilityAction("View following") { onOpenFollowing(); true })
         if (isRemoteMastodon) {
             val host = user.acct.removePrefix("@").substringAfter('@')
             add(CustomAccessibilityAction("Open $host timeline") {
@@ -314,6 +322,14 @@ private fun ProfileHeader(
                     modifier = Modifier.clearAndSetSemantics { },
                 ) { Text("Lists") }
             }
+            TextButton(
+                onClick = onOpenFollowers,
+                modifier = Modifier.clearAndSetSemantics { },
+            ) { Text("Followers") }
+            TextButton(
+                onClick = onOpenFollowing,
+                modifier = Modifier.clearAndSetSemantics { },
+            ) { Text("Following") }
         }
     }
 }

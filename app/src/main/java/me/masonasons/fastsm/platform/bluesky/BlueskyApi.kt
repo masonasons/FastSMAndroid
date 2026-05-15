@@ -104,6 +104,38 @@ class BlueskyApi(
             parameter("depth", depth)
         }.body()
 
+    suspend fun getFollowers(actor: String, limit: Int, cursor: String?): BskyActorListResponseDto =
+        httpClient.get("$pdsBase/xrpc/app.bsky.graph.getFollowers") {
+            bearer()
+            parameter("actor", actor)
+            parameter("limit", limit)
+            if (cursor != null) parameter("cursor", cursor)
+        }.body()
+
+    suspend fun getFollows(actor: String, limit: Int, cursor: String?): BskyActorListResponseDto =
+        httpClient.get("$pdsBase/xrpc/app.bsky.graph.getFollows") {
+            bearer()
+            parameter("actor", actor)
+            parameter("limit", limit)
+            if (cursor != null) parameter("cursor", cursor)
+        }.body()
+
+    suspend fun muteActor(actor: String) {
+        httpClient.post("$pdsBase/xrpc/app.bsky.graph.muteActor") {
+            bearer()
+            contentType(ContentType.Application.Json)
+            setBody(BskyActorRequest(actor))
+        }
+    }
+
+    suspend fun unmuteActor(actor: String) {
+        httpClient.post("$pdsBase/xrpc/app.bsky.graph.unmuteActor") {
+            bearer()
+            contentType(ContentType.Application.Json)
+            setBody(BskyActorRequest(actor))
+        }
+    }
+
     suspend fun createRecord(repo: String, collection: String, record: JsonObject): CreateRecordResponse =
         httpClient.post("$pdsBase/xrpc/com.atproto.repo.createRecord") {
             bearer()

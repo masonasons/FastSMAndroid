@@ -101,11 +101,79 @@ class MastodonApi(
             parameter("id[]", userId)
         }.body<List<MastodonRelationshipDto>>().firstOrNull()
 
-    suspend fun followAccount(userId: String): MastodonRelationshipDto =
-        httpClient.post("$instanceBase/api/v1/accounts/$userId/follow") { bearer() }.body()
+    suspend fun getRelationships(userIds: List<String>): List<MastodonRelationshipDto> {
+        if (userIds.isEmpty()) return emptyList()
+        return httpClient.get("$instanceBase/api/v1/accounts/relationships") {
+            bearer()
+            userIds.forEach { parameter("id[]", it) }
+        }.body()
+    }
+
+    suspend fun followAccount(userId: String, reblogs: Boolean? = null): MastodonRelationshipDto =
+        if (reblogs == null) {
+            httpClient.post("$instanceBase/api/v1/accounts/$userId/follow") { bearer() }.body()
+        } else {
+            httpClient.submitForm(
+                url = "$instanceBase/api/v1/accounts/$userId/follow",
+                formParameters = Parameters.build { append("reblogs", reblogs.toString()) },
+            ) { bearer() }.body()
+        }
 
     suspend fun unfollowAccount(userId: String): MastodonRelationshipDto =
         httpClient.post("$instanceBase/api/v1/accounts/$userId/unfollow") { bearer() }.body()
+
+    suspend fun muteAccount(userId: String): MastodonRelationshipDto =
+        httpClient.post("$instanceBase/api/v1/accounts/$userId/mute") { bearer() }.body()
+
+    suspend fun unmuteAccount(userId: String): MastodonRelationshipDto =
+        httpClient.post("$instanceBase/api/v1/accounts/$userId/unmute") { bearer() }.body()
+
+    suspend fun blockAccount(userId: String): MastodonRelationshipDto =
+        httpClient.post("$instanceBase/api/v1/accounts/$userId/block") { bearer() }.body()
+
+    suspend fun unblockAccount(userId: String): MastodonRelationshipDto =
+        httpClient.post("$instanceBase/api/v1/accounts/$userId/unblock") { bearer() }.body()
+
+    /**
+     * Followers list. Mastodon paginates via the `Link: rel="next"` header
+     * with an opaque `max_id` query arg (it's the *follow* relationship id,
+     * not the account id, so we have to read it back from the header rather
+     * than infer it from the last item in the list).
+     */
+    suspend fun getFollowers(userId: String, limit: Int, maxId: String?): Pair<List<MastodonAccountDto>, String?> {
+        val response = httpClient.get("$instanceBase/api/v1/accounts/$userId/followers") {
+            bearer()
+            parameter("limit", limit)
+            if (maxId != null) parameter("max_id", maxId)
+        }
+        return response.body<List<MastodonAccountDto>>() to nextMaxIdFromLink(response.headers["Link"])
+    }
+
+    suspend fun getFollowing(userId: String, limit: Int, maxId: String?): Pair<List<MastodonAccountDto>, String?> {
+        val response = httpClient.get("$instanceBase/api/v1/accounts/$userId/following") {
+            bearer()
+            parameter("limit", limit)
+            if (maxId != null) parameter("max_id", maxId)
+        }
+        return response.body<List<MastodonAccountDto>>() to nextMaxIdFromLink(response.headers["Link"])
+    }
+
+    /**
+     * Extract `max_id` from a Mastodon `Link` header. Shape:
+     *   <https://.../followers?max_id=12345>; rel="next", <https://.../followers?since_id=999>; rel="prev"
+     * Returns null when no next link is advertised — signal of end-of-list.
+     */
+    private fun nextMaxIdFromLink(link: String?): String? {
+        if (link.isNullOrBlank()) return null
+        val parts = link.split(',')
+        val nextEntry = parts.firstOrNull { it.contains("rel=\"next\"") } ?: return null
+        val urlPart = nextEntry.substringAfter('<', "").substringBefore('>', "")
+        if (urlPart.isEmpty()) return null
+        val query = runCatching { java.net.URI(urlPart).rawQuery }.getOrNull() ?: return null
+        return query.split('&')
+            .firstOrNull { it.startsWith("max_id=") }
+            ?.substringAfter("max_id=")
+    }
 
     suspend fun getStatus(statusId: String): MastodonStatusDto =
         httpClient.get("$instanceBase/api/v1/statuses/$statusId") { bearer() }.body()
