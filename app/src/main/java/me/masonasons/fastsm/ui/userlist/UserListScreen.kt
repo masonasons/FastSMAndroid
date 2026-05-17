@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Checkbox
@@ -63,6 +65,7 @@ fun UserListScreen(
     onClose: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var sortMenuOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -90,6 +93,38 @@ fun UserListScreen(
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
                     }
+                    Box {
+                        IconButton(onClick = { sortMenuOpen = true }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = "Sort (${state.sortMode.label})",
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuOpen,
+                            onDismissRequest = { sortMenuOpen = false },
+                        ) {
+                            val sortOptions = buildList {
+                                add(SortMode.Default)
+                                add(SortMode.FollowingFirst)
+                                if (state.platform == PlatformType.MASTODON) {
+                                    add(SortMode.BoostsHiddenFirst)
+                                }
+                                add(SortMode.MutedFirst)
+                                add(SortMode.BlockedFirst)
+                            }
+                            sortOptions.forEach { mode ->
+                                val active = state.sortMode == mode
+                                DropdownMenuItem(
+                                    text = { Text((if (active) "✓ " else "  ") + mode.label) },
+                                    onClick = {
+                                        sortMenuOpen = false
+                                        viewModel.setSortMode(mode)
+                                    },
+                                )
+                            }
+                        }
+                    }
                     IconButton(onClick = { viewModel.setEditMode(!state.editMode) }) {
                         if (state.editMode) {
                             Icon(Icons.Filled.Close, contentDescription = "Exit edit mode")
@@ -111,7 +146,7 @@ fun UserListScreen(
                         onClick = viewModel::clearSelection,
                         enabled = !state.batchInProgress && state.selected.isNotEmpty(),
                     ) { Text("Clear") }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp))
+                    Spacer(Modifier.weight(1f))
                     TextButton(
                         onClick = viewModel::batchFollow,
                         enabled = !state.batchInProgress && state.selected.isNotEmpty(),
@@ -142,6 +177,9 @@ fun UserListScreen(
             }
             else -> {
                 val listState = rememberLazyListState()
+                val displayedUsers = remember(state.users, state.relationships, state.sortMode) {
+                    applySort(state.users, state.relationships, state.sortMode)
+                }
                 val shouldLoadMore by remember(state) {
                     derivedStateOf {
                         val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
@@ -156,7 +194,7 @@ fun UserListScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
-                    items(state.users, key = { it.id }) { user ->
+                    items(displayedUsers, key = { it.id }) { user ->
                         UserRow(
                             user = user,
                             relationship = state.relationships[user.id],
@@ -352,6 +390,30 @@ private fun UserRow(
             )
         }
     }
+}
+
+/**
+ * Pull users matching the current sort criterion to the top of the list,
+ * preserving their original (server-defined) relative order. Stable so the
+ * list doesn't shuffle when individual relationships flip mid-session.
+ */
+private fun applySort(
+    users: List<UniversalUser>,
+    relationships: Map<String, Relationship>,
+    mode: SortMode,
+): List<UniversalUser> {
+    if (mode == SortMode.Default) return users
+    val matches: (UniversalUser) -> Boolean = when (mode) {
+        SortMode.Default -> return users
+        SortMode.FollowingFirst -> { user -> relationships[user.id]?.following == true }
+        SortMode.BoostsHiddenFirst -> { user ->
+            val rel = relationships[user.id]
+            rel?.following == true && rel.showReblogs == false
+        }
+        SortMode.MutedFirst -> { user -> relationships[user.id]?.muting == true }
+        SortMode.BlockedFirst -> { user -> relationships[user.id]?.blocking == true }
+    }
+    return users.sortedByDescending { matches(it) }
 }
 
 @Composable

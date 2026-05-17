@@ -20,6 +20,21 @@ import me.masonasons.fastsm.platform.PlatformFactory
 
 enum class UserListKind { Followers, Following }
 
+/**
+ * Secondary ordering applied on top of the server's default order. Each mode
+ * pulls "matching" users to the top while preserving the original order
+ * within each bucket. Sort is best-effort: when relationship data is unknown
+ * for a user (Bluesky, or before the Mastodon batch returns), they fall to
+ * the "unmatched" bucket.
+ */
+enum class SortMode(val label: String) {
+    Default("Default"),
+    FollowingFirst("Following first"),
+    BoostsHiddenFirst("Boosts hidden first"),
+    MutedFirst("Muted first"),
+    BlockedFirst("Blocked first"),
+}
+
 private const val PAGE_SIZE = 40
 
 class UserListViewModel(
@@ -169,6 +184,10 @@ class UserListViewModel(
         }
     }
 
+    fun setSortMode(mode: SortMode) {
+        _state.value = _state.value.copy(sortMode = mode)
+    }
+
     fun setEditMode(on: Boolean) {
         _state.value = _state.value.copy(
             editMode = on,
@@ -282,6 +301,7 @@ data class UserListState(
     val editMode: Boolean = false,
     val selected: Set<String> = emptySet(),
     val batchInProgress: Boolean = false,
+    val sortMode: SortMode = SortMode.Default,
 )
 
 sealed interface UserListEvent {
