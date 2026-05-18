@@ -49,7 +49,6 @@ import me.masonasons.fastsm.util.CustomTabs
 import me.masonasons.fastsm.util.MediaLauncher
 
 private object Routes {
-    const val LOADING = "loading"
     const val ADD_ACCOUNT = "add-account"
     const val HOME = "home"
     const val COMPOSE = "compose"
@@ -94,15 +93,23 @@ fun FastSmNavGraph(container: AppContainer) {
         runCatching { CustomTabs.launch(context, android.net.Uri.parse(url)) }
     }
 
-    val startDestination = when {
-        accounts == null -> Routes.LOADING
-        accounts!!.isEmpty() -> Routes.ADD_ACCOUNT
-        else -> Routes.HOME
+    // Show the spinner OUTSIDE the NavHost while we don't yet know if any
+    // accounts exist. If we render NavHost with a placeholder startDestination
+    // and then re-render it with HOME (or ADD_ACCOUNT) once accounts load, the
+    // graph is rebuilt and the saved back stack is dropped — which dumps the
+    // user back to HOME on every rotation (e.g. losing an in-progress compose).
+    val currentAccounts = accounts
+    if (currentAccounts == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
-    LaunchedEffect(accounts) {
-        val list = accounts ?: return@LaunchedEffect
-        if (list.isEmpty()) {
+    val startDestination = if (currentAccounts.isEmpty()) Routes.ADD_ACCOUNT else Routes.HOME
+
+    LaunchedEffect(currentAccounts) {
+        if (currentAccounts.isEmpty()) {
             val current = navController.currentBackStackEntry?.destination?.route
             if (current != null && current != Routes.ADD_ACCOUNT) {
                 navController.navigate(Routes.ADD_ACCOUNT) {
@@ -142,11 +149,6 @@ fun FastSmNavGraph(container: AppContainer) {
         LocalSubmitOnImeAction provides submitOnImeAction,
     ) {
     NavHost(navController = navController, startDestination = startDestination) {
-        composable(Routes.LOADING) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
         composable(Routes.ADD_ACCOUNT) {
             val vm: AddAccountViewModel = viewModel(factory = factory)
             AddAccountScreen(

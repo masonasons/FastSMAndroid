@@ -53,7 +53,7 @@ class AppContainer(context: Context) {
         install(WebSockets)
         install(DefaultRequest) {
             header(HttpHeaders.Accept, "application/json")
-            header(HttpHeaders.UserAgent, "FastSM-Android/0.2.2")
+            header(HttpHeaders.UserAgent, "FastSM-Android/0.2.3")
         }
     }
 
