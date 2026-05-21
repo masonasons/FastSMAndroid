@@ -165,10 +165,11 @@ fun FastSmNavGraph(container: AppContainer) {
             val vm: HomeViewModel = viewModel(factory = factory)
             HomeScreen(
                 viewModel = vm,
-                onReply = { status ->
-                    vm.prepareReply(status)
-                    navController.navigate(Routes.COMPOSE)
-                },
+                // prepareReply is async (resolves remote ids before setting the
+                // draft). It emits OpenCompose when done; the screen observer
+                // navigates. Don't navigate eagerly here — it races with the
+                // draft set and can land on a blank new post instead of a reply.
+                onReply = { status -> vm.prepareReply(status) },
                 onOpenThread = { status -> navController.navigate(Routes.thread(status.id)) },
                 onOpenProfile = { userId -> navController.navigate(Routes.profile(userId)) },
                 onOpenMedia = onOpenMedia,
@@ -205,10 +206,7 @@ fun FastSmNavGraph(container: AppContainer) {
             )
             ThreadScreen(
                 viewModel = vm,
-                onReply = { status ->
-                    vm.prepareReply(status)
-                    navController.navigate(Routes.COMPOSE)
-                },
+                onReply = { status -> vm.prepareReply(status) },
                 onOpenThread = { status -> navController.navigate(Routes.thread(status.id)) },
                 onOpenProfile = { userId -> navController.navigate(Routes.profile(userId)) },
                 onOpenMedia = onOpenMedia,
@@ -280,10 +278,7 @@ fun FastSmNavGraph(container: AppContainer) {
             )
             ProfileScreen(
                 viewModel = vm,
-                onReply = { status ->
-                    vm.prepareReply(status)
-                    navController.navigate(Routes.COMPOSE)
-                },
+                onReply = { status -> vm.prepareReply(status) },
                 onOpenThread = { status -> navController.navigate(Routes.thread(status.id)) },
                 onOpenProfile = { userId -> navController.navigate(Routes.profile(userId)) },
                 onOpenMedia = onOpenMedia,

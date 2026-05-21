@@ -177,6 +177,7 @@ class ThreadViewModel(
                     visibility = status.visibility,
                 )
             )
+            _events.tryEmit(ThreadEvent.OpenCompose)
         }
     }
 

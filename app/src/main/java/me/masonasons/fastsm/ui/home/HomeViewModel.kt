@@ -526,6 +526,7 @@ class HomeViewModel(
                     visibility = resolved.visibility,
                 )
             )
+            _events.tryEmit(HomeEvent.OpenCompose)
         }
     }
 

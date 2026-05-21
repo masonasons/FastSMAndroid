@@ -333,6 +333,7 @@ class ProfileViewModel(
                     visibility = status.visibility,
                 )
             )
+            _events.tryEmit(ProfileEvent.OpenCompose)
         }
     }
 

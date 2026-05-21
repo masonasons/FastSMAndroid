@@ -1,3 +1,6 @@
+0.2.4
+Fix reply sometimes opening a blank new post instead of a reply.
+
 0.2.3
 Fix the compose screen vanishing back to the timeline when the device is rotated.
 
